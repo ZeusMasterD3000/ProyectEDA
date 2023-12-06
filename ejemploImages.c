@@ -12,7 +12,7 @@
 
 void splitChannels();
 
-int main(int argc, char *argv[])
+int main()
 {
   splitChannels();
   return 0;
