@@ -50,9 +50,9 @@ void splitChannels()
 
   for (int i = 0; i < imaSize; i++)
   {
-    unsigned char r = srcIma[i * channels + 0];
-    unsigned char g = srcIma[i * channels + 1];
-    unsigned char b = srcIma[i * channels + 2];
+    unsigned char r = srcIma[i * channels + 0]; //0
+    unsigned char g = srcIma[i * channels + 1]; //1
+    unsigned char b = srcIma[i * channels + 2]; //2
 
     imaBlue[i * channels + 0] = 0;
     imaBlue[i * channels + 1] = 0;

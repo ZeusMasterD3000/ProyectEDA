@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-//#include <omp.h>
+#include <omp.h>
 
 #define L 10 //256
 #define prints 1
@@ -21,7 +21,9 @@ int *Histograma_sec(int **imagen, int ren, int col){
     return histograma;
 }
 int **RandomImage(int ren, int col){
+    // Imagen
     int **imagen = malloc(ren * sizeof(int *));
+    
     for(size_t i = 0; i < ren; i++){
         imagen[i] = malloc(col * sizeof(int));
     }
