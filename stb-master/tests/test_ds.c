@@ -9,13 +9,12 @@
 //#define STBDS_INTERNAL_BUCKET_START    // don't bother offseting differently within bucket for different hash values
 //#define STBDS_FLUSH_CACHE  (1u<<20) // do this much memory traffic to flush the cache between some benchmarking measurements
 
-#include <stdio.h>
-
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define STB_DEFINE
 #define STB_NO_REGISTRY
 #include "../stb.h"
+#include <stdio.h>
 #endif
 
 #ifdef DS_TEST
@@ -64,10 +63,7 @@ void churn(int a, int b, int count)
 #include <stdio.h>
 int main(int argc, char **argv)
 {
-  char *temp=NULL;
   stbds_unit_tests();
-  arrins(temp, 0, 'a');
-  arrins(temp, arrlen(temp), 'b');
   churn(0,100,1);
   churn(3,7,50000);
   churn(3,15,50000);

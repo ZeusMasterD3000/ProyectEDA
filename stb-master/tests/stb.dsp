@@ -66,7 +66,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /GX /Zi /Od /I ".." /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "TT_TEST" /FR /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /GX /Zi /Od /I ".." /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "VORBIS_TEST" /FR /FD /GZ /c
 # SUBTRACT CPP /YX
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
@@ -130,11 +130,11 @@ SOURCE=..\stb_image.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\stb_image_write.h
+SOURCE=..\stb_image_resize.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\stb_include.h
+SOURCE=..\stb_image_write.h
 # End Source File
 # Begin Source File
 
@@ -147,6 +147,14 @@ SOURCE=..\stb_malloc.h
 # Begin Source File
 
 SOURCE=..\stb_perlin.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\stb_pg.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\stb_query.h
 # End Source File
 # Begin Source File
 
@@ -182,6 +190,14 @@ SOURCE=..\stb_voxel_render.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\stretchy_buffer.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\stretchy_buffer_test.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\test_c_compilation.c
 # End Source File
 # Begin Source File
@@ -207,10 +223,6 @@ SOURCE=.\test_image.c
 # Begin Source File
 
 SOURCE=.\test_image_write.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\test_packer.c
 # End Source File
 # Begin Source File
 
