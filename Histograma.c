@@ -14,24 +14,56 @@ int *FDA(int *histo_og){
     int *D_Acumulada = malloc(L * sizeof(int));
 
     D_Acumulada[0] = histo_og[0];
+
     for(int i = 1; i < L; i++){
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
     return D_Acumulada;
 }
 
+//Version paralela (talvez no es necesaria)
+int *FDA_paralela(int *histo_og){
+    int *D_Acumulada = malloc(L * sizeof(int));
+
+    D_Acumulada[0] = histo_og[0];
+    
+    #pragma omp parallel for
+    for(int i = 1; i < L; i++){
+        D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
+    }
+    return D_Acumulada;
+    
+}
+
 int *histograma_sec(unsigned char *pixeles, int ancho, int alto, int canal){
     int *histograma = malloc(L * sizeof(int));
 
-    // parallel for
     for(int i = 0; i < L; i++){
         histograma[i] = 0;
     }
 
-    // Iterar sobre todos los píxeles de la imagen
     for(int i = 0; i < ancho*alto*canal; i += canal){
         histograma[pixeles[i]] += 1;
     }
+    return histograma;
+}
+
+//Version paralela
+int *histograma_paralela(unsigned char *pixeles, int ancho, int alto, int canal){
+    int *histograma = malloc(L * sizeof(int));
+
+    #pragma omp parallel for
+    for(int i = 0; i < L; i++){
+        histograma[i] = 0;
+    }
+
+    #pragma omp barrier
+
+    #pragma omp parallel for
+    for(int i = 0; i < ancho*alto*canal; i += canal){
+        histograma[pixeles[i]] += 1;
+    }
+
     return histograma;
 }
 
@@ -104,16 +136,44 @@ int main(int argc, char *argv[]){
         printf("\nImagen cargada correctamente\n\n");
     }
 
+    //Version secuencial
+    double tiempoInicialS = omp_get_wtime();
+
     int *histo_original = histograma_sec(pixeles,ancho,alto,canales);
     int *f_acumulada = FDA(histo_original);
-
     unsigned char *pixeles_new = funcion_eq_sec(pixeles,f_acumulada,ancho,alto,canales);
     int *histo_modificado = histograma_sec(pixeles_new,ancho,alto,1);
+
+    double tiempofinalS = omp_get_wtime();
+
+    //Version paralela
+    /*
+    double tiempoInicialP = omp_get_wtime();
+
+    int *histo_originalP = histograma_paralela(pixeles,ancho,alto,canales); 
+    int *f_acumuladaP = FDA_paralela(histo_original); 
+
+    double tiempofinalP = omp_get_wtime();*/
 
     stbi_write_jpg(cambiar_name(dicIma,1), ancho, alto, 1, pixeles_new, 100);
     stbi_image_free(pixeles_new);
 
     archivoCSV(histo_original,histo_modificado,dicIma,3);
+
+    printf("----Metricas----\n");
+
+    printf("Resolucion de la imagen:\n");
+    printf("Ancho: %d\n", ancho);
+    printf("Alto: %d\n", alto);
+    printf("Canales: %d\n", canales);
+    printf("Tamaño: %d\n", ancho * alto * canales);
+
+    printf("Tiempo de ejecucion:\n");
+    printf("Tiempo de ejecución (secuencial): %f [s]\n", tiempofinalS - tiempoInicialS);
+    /*printf("Tiempo de ejecución (paralelo): %f [s]\n", tiempofinalP - tiempoInicialP);*/
+
+    int procesadores = omp_get_num_procs();
+    printf("Numero de procesadores: %d\n", procesadores);
 
     return 0;
 }
