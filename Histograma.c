@@ -29,10 +29,11 @@ int *FDA_paralela(int *histo_og) {
 
     D_Acumulada[0] = histo_og[0];
 
-#pragma omp parallel for
+    #pragma omp master
     for (int i = 1; i < L; i++) {
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
+
     return D_Acumulada;
 }
 
@@ -53,14 +54,12 @@ int *histograma_sec(unsigned char *pixeles, int ancho, int alto, int canal) {
 int *histograma_paralela(unsigned char *pixeles, int ancho, int alto, int canal) {
     int *histograma = malloc(L * sizeof(int));
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int i = 0; i < L; i++) {
         histograma[i] = 0;
     }
 
-#pragma omp barrier
-
-#pragma omp parallel for
+    #pragma omp parallel for reduction(+:histograma[:L])
     for (int i = 0; i < ancho * alto * canal; i += canal) {
         histograma[pixeles[i]] += 1;
     }
@@ -78,8 +77,7 @@ unsigned char *funcion_eq_sec(unsigned char *pixeles, int *cdf, int ancho, int a
             break;
         }
     }
-    int tam = ancho * alto;
-
+    
     for (int i = 0; i < L; i++) {
         funcion_eq[i] = round(((cdf[i] - cdf_min) / ((double)(ancho * alto)) * 254)) + 1;
     }
@@ -89,6 +87,32 @@ unsigned char *funcion_eq_sec(unsigned char *pixeles, int *cdf, int ancho, int a
     for (int i = 0; i < ancho * alto * canal; i++) {
         new_pixeles[i] = funcion_eq[pixeles[i]];
     }
+    return new_pixeles;
+}
+
+unsigned char *funcion_eq_paralelo(unsigned char *pixeles, int *cdf, int ancho, int alto, int canal) {
+    int *funcion_eq = malloc(L * sizeof(int));
+    int cdf_min;
+
+    for (int i = 0; i < L; i++) {
+        if (cdf[i] != 0) {
+            cdf_min = cdf[i];
+            break;
+        }
+    }
+
+    #pragma omp parallel for
+    for (int i = 0; i < L; i++) {
+        funcion_eq[i] = round(((cdf[i] - cdf_min) / ((double)(ancho * alto)) * 254)) + 1;
+    }
+
+    unsigned char *new_pixeles = malloc(ancho * alto * canal * sizeof(unsigned char));
+
+    #pragma omp parallel for
+    for (int i = 0; i < ancho * alto * canal; i++) {
+        new_pixeles[i] = funcion_eq[pixeles[i]];
+    }
+
     return new_pixeles;
 }
 
@@ -140,41 +164,46 @@ int main(int argc, char *argv[]) {
     // Version secuencial
     double tiempoInicialS = omp_get_wtime();
 
-    int *histo_original = histograma_sec(pixeles, ancho, alto, canales);
-    int *f_acumulada = FDA(histo_original);
-    unsigned char *pixeles_new = funcion_eq_sec(pixeles, f_acumulada, ancho, alto, canales);
-    int *histo_modificado = histograma_sec(pixeles_new, ancho, alto, canales);
+    int *histo_original_S = histograma_sec(pixeles, ancho, alto, canales);
+    int *f_acumulada_S = FDA(histo_original_S);
+    unsigned char *pixeles_new_S = funcion_eq_sec(pixeles, f_acumulada_S, ancho, alto, canales);
+    int *histo_modificado_S = histograma_sec(pixeles_new_S, ancho, alto, canales);
 
     double tiempofinalS = omp_get_wtime();
 
+    archivoCSV(histo_original_S, histo_modificado_S, dicIma, 3);
+    stbi_write_jpg(cambiar_name(dicIma, 1), ancho, alto, canales, pixeles_new_S, 100);
+
     // Version paralela
-    /*
     double tiempoInicialP = omp_get_wtime();
 
-    int *histo_originalP = histograma_paralela(pixeles,ancho,alto,canales);
-    int *f_acumuladaP = FDA_paralela(histo_original);
+    int *histo_original_P = histograma_paralela(pixeles,ancho,alto,canales);
+    int *f_acumulada_P = FDA_paralela(histo_original_P);
+    unsigned char *pixeles_new_P = funcion_eq_paralelo(pixeles, f_acumulada_P, ancho, alto, canales);
+    int *histo_modificado_P = histograma_paralela(pixeles_new_P, ancho, alto, canales);
 
-    double tiempofinalP = omp_get_wtime();*/
+    double tiempofinalP = omp_get_wtime();
 
-    stbi_write_jpg(cambiar_name(dicIma, 1), ancho, alto, canales, pixeles_new, 100);
-    stbi_image_free(pixeles_new);
+    archivoCSV(histo_original_P, histo_modificado_P, dicIma, 4);
+    stbi_write_jpg(cambiar_name(dicIma, 2), ancho, alto, canales, pixeles_new_P, 100);
 
-    archivoCSV(histo_original, histo_modificado, dicIma, 3);
+    stbi_image_free(pixeles_new_S);
+    stbi_image_free(pixeles_new_P);
 
-    printf("----Metricas----\n");
+    printf("\n<--><--><--><--| Metricas |--><--><--><-->\n");
 
-    printf("Resolucion de la imagen:\n");
-    printf("Ancho: %d\n", ancho);
-    printf("Alto: %d\n", alto);
-    printf("Canales: %d\n", canales);
-    printf("Tamaño: %d\n", ancho * alto * canales);
+    printf("<--><--| Resolucion de la imagen:\n");
+    printf("<--| Ancho: %d\n", ancho);
+    printf("<--| Alto: %d\n", alto);
+    printf("<--| Canales: %d\n", canales);
+    printf("<--| Tamaño: %d\n", ancho * alto * canales);
 
-    printf("Tiempo de ejecucion:\n");
-    printf("Tiempo de ejecución (secuencial): %f [s]\n", tiempofinalS - tiempoInicialS);
-    /*printf("Tiempo de ejecución (paralelo): %f [s]\n", tiempofinalP - tiempoInicialP);*/
+    printf("<--><--| Tiempo de ejecucion:\n");
+    printf("<--| Tiempo de ejecución (secuencial): %f [s]\n", tiempofinalS - tiempoInicialS);
+    printf("<--| Tiempo de ejecución (paralelo): %f [s]\n", tiempofinalP - tiempoInicialP);
 
     int procesadores = omp_get_num_procs();
-    printf("Numero de procesadores: %d\n", procesadores);
+    printf("\n<--| Numero de procesadores: %d\n", procesadores);
 
     return 0;
 }
