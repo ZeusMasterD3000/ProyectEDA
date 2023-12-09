@@ -12,11 +12,14 @@
 
 #define L 256
 
+//Funcion de distribucion acumulativa
 int *FDA(int *histo_og) {
     int *D_Acumulada = malloc(L * sizeof(int));
 
     D_Acumulada[0] = histo_og[0];
 
+    /*Cada elemento se calcula sumando el valor previo 
+    al valor correspondiente del histograma original.*/
     for (int i = 1; i < L; i++) {
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
