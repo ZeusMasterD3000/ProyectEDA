@@ -1,5 +1,7 @@
 #include <stdio.h>
-#include<math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 #include <omp.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -10,83 +12,82 @@
 
 #define L 256
 
-int *FDA(int *histo_og){
+int *FDA(int *histo_og) {
     int *D_Acumulada = malloc(L * sizeof(int));
 
     D_Acumulada[0] = histo_og[0];
 
-    for(int i = 1; i < L; i++){
+    for (int i = 1; i < L; i++) {
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
     return D_Acumulada;
 }
 
-//Version paralela (talvez no es necesaria)
-int *FDA_paralela(int *histo_og){
+// Version paralela (tal vez no es necesaria)
+int *FDA_paralela(int *histo_og) {
     int *D_Acumulada = malloc(L * sizeof(int));
 
     D_Acumulada[0] = histo_og[0];
-    
-    #pragma omp parallel for
-    for(int i = 1; i < L; i++){
+
+#pragma omp parallel for
+    for (int i = 1; i < L; i++) {
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
     return D_Acumulada;
-    
 }
 
-int *histograma_sec(unsigned char *pixeles, int ancho, int alto, int canal){
+int *histograma_sec(unsigned char *pixeles, int ancho, int alto, int canal) {
     int *histograma = malloc(L * sizeof(int));
 
-    for(int i = 0; i < L; i++){
+    for (int i = 0; i < L; i++) {
         histograma[i] = 0;
     }
 
-    for(int i = 0; i < ancho*alto*canal; i += canal){
+    for (int i = 0; i < ancho * alto * canal; i += canal) {
         histograma[pixeles[i]] += 1;
     }
     return histograma;
 }
 
-//Version paralela
-int *histograma_paralela(unsigned char *pixeles, int ancho, int alto, int canal){
+// Version paralela
+int *histograma_paralela(unsigned char *pixeles, int ancho, int alto, int canal) {
     int *histograma = malloc(L * sizeof(int));
 
-    #pragma omp parallel for
-    for(int i = 0; i < L; i++){
+#pragma omp parallel for
+    for (int i = 0; i < L; i++) {
         histograma[i] = 0;
     }
 
-    #pragma omp barrier
+#pragma omp barrier
 
-    #pragma omp parallel for
-    for(int i = 0; i < ancho*alto*canal; i += canal){
+#pragma omp parallel for
+    for (int i = 0; i < ancho * alto * canal; i += canal) {
         histograma[pixeles[i]] += 1;
     }
 
     return histograma;
 }
 
-unsigned char *funcion_eq_sec(unsigned char *pixeles, int *cdf, int ancho, int alto, int canal){
+unsigned char *funcion_eq_sec(unsigned char *pixeles, int *cdf, int ancho, int alto, int canal) {
     int *funcion_eq = malloc(L * sizeof(int));
     int cdf_min;
 
-    for(int i = 0; i < L; i++){
-        if(cdf[i] != 0){
+    for (int i = 0; i < L; i++) {
+        if (cdf[i] != 0) {
             cdf_min = cdf[i];
             break;
         }
-    }    
+    }
     int tam = ancho * alto;
 
-    for(int i = 0; i < L; i++){
+    for (int i = 0; i < L; i++) {
         funcion_eq[i] = round(((cdf[i] - cdf_min) / ((double)(ancho * alto)) * 254)) + 1;
     }
 
-    unsigned char *new_pixeles = malloc(ancho * alto * sizeof(unsigned char));
+    unsigned char *new_pixeles = malloc(ancho * alto * canal * sizeof(unsigned char));
 
-    for(int i = 0; i < ancho*alto; i++){
-        new_pixeles[i] = funcion_eq[pixeles[i * canal]];
+    for (int i = 0; i < ancho * alto * canal; i++) {
+        new_pixeles[i] = funcion_eq[pixeles[i]];
     }
     return new_pixeles;
 }
@@ -95,7 +96,7 @@ char *cambiar_name(const char *name, int op) {
     char *name_aux = NULL;
     char *extension = ".jpg";
     char *punto = strrchr(name, '.');
-    
+
     if (punto != NULL && strcmp(punto, extension) == 0) {
         if (op == 1) {
             asprintf(&name_aux, "%.*s_eq_secuencial.jpg", (int)(punto - name), name);
@@ -111,7 +112,7 @@ char *cambiar_name(const char *name, int op) {
 }
 
 void archivoCSV(int *histograma_og, int *histograma_eq, char *name, int op) {
-    char *name_new = cambiar_name(name,op);
+    char *name_new = cambiar_name(name, op);
 
     FILE *csv = fopen(name_new, "w");
 
@@ -122,43 +123,43 @@ void archivoCSV(int *histograma_og, int *histograma_eq, char *name, int op) {
     printf("Datos escritos correctamente en %s\n", name_new);
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 
     char *dicIma = argv[1];
     int ancho, alto, canales;
     unsigned char *pixeles = stbi_load(dicIma, &ancho, &alto, &canales, 0);
 
-    if(pixeles == NULL){
+    if (pixeles == NULL) {
         printf("\nLa imagen no pudo ser cargada correctamente %s", dicIma);
         printf("\nVerificar que sea '.jpg' o que haya puesto bien la dirección\n");
         exit(1);
-    }else{
+    } else {
         printf("\nImagen cargada correctamente\n\n");
     }
 
-    //Version secuencial
+    // Version secuencial
     double tiempoInicialS = omp_get_wtime();
 
-    int *histo_original = histograma_sec(pixeles,ancho,alto,canales);
+    int *histo_original = histograma_sec(pixeles, ancho, alto, canales);
     int *f_acumulada = FDA(histo_original);
-    unsigned char *pixeles_new = funcion_eq_sec(pixeles,f_acumulada,ancho,alto,canales);
-    int *histo_modificado = histograma_sec(pixeles_new,ancho,alto,1);
+    unsigned char *pixeles_new = funcion_eq_sec(pixeles, f_acumulada, ancho, alto, canales);
+    int *histo_modificado = histograma_sec(pixeles_new, ancho, alto, canales);
 
     double tiempofinalS = omp_get_wtime();
 
-    //Version paralela
+    // Version paralela
     /*
     double tiempoInicialP = omp_get_wtime();
 
-    int *histo_originalP = histograma_paralela(pixeles,ancho,alto,canales); 
-    int *f_acumuladaP = FDA_paralela(histo_original); 
+    int *histo_originalP = histograma_paralela(pixeles,ancho,alto,canales);
+    int *f_acumuladaP = FDA_paralela(histo_original);
 
     double tiempofinalP = omp_get_wtime();*/
 
-    stbi_write_jpg(cambiar_name(dicIma,1), ancho, alto, 1, pixeles_new, 100);
+    stbi_write_jpg(cambiar_name(dicIma, 1), ancho, alto, canales, pixeles_new, 100);
     stbi_image_free(pixeles_new);
 
-    archivoCSV(histo_original,histo_modificado,dicIma,3);
+    archivoCSV(histo_original, histo_modificado, dicIma, 3);
 
     printf("----Metricas----\n");
 
@@ -177,4 +178,3 @@ int main(int argc, char *argv[]){
 
     return 0;
 }
-
