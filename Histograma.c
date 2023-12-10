@@ -154,7 +154,10 @@ int main(int argc, char *argv[]) {
 
     char *dicIma = argv[1];
     int ancho, alto, canales;
+
+    double tiempoInicialCargI = omp_get_wtime();
     unsigned char *pixeles = stbi_load(dicIma, &ancho, &alto, &canales, 0);
+    double tiempoFinalCargI = omp_get_wtime();
 
     if (pixeles == NULL) {
         printf("\nLa imagen no pudo ser cargada correctamente %s", dicIma);
@@ -166,47 +169,54 @@ int main(int argc, char *argv[]) {
 
     // Version secuencial
     double tiempoInicialS = omp_get_wtime();
-
     int *histo_original_S = histograma_sec(pixeles, ancho, alto, canales);
     int *f_acumulada_S = FDA(histo_original_S);
     unsigned char *pixeles_new_S = funcion_eq_sec(pixeles, f_acumulada_S, ancho, alto, canales);
     int *histo_modificado_S = histograma_sec(pixeles_new_S, ancho, alto, canales);
-
     double tiempofinalS = omp_get_wtime();
-
-    archivoCSV(histo_original_S, histo_modificado_S, dicIma, 3);
-    stbi_write_jpg(cambiar_name(dicIma, 1), ancho, alto, canales, pixeles_new_S, 100);
 
     // Version paralela
     double tiempoInicialP = omp_get_wtime();
-
     int *histo_original_P = histograma_paralela(pixeles,ancho,alto,canales);
     int *f_acumulada_P = FDA_paralela(histo_original_P);
     unsigned char *pixeles_new_P = funcion_eq_paralelo(pixeles, f_acumulada_P, ancho, alto, canales);
     int *histo_modificado_P = histograma_paralela(pixeles_new_P, ancho, alto, canales);
-
     double tiempofinalP = omp_get_wtime();
 
+    double tiempoInicialArch = omp_get_wtime();
+    archivoCSV(histo_original_S, histo_modificado_S, dicIma, 3);
     archivoCSV(histo_original_P, histo_modificado_P, dicIma, 4);
+    double tiempoFinalArch = omp_get_wtime();
+
+    double tiempoInicialImag = omp_get_wtime();
+    stbi_write_jpg(cambiar_name(dicIma, 1), ancho, alto, canales, pixeles_new_S, 100);
     stbi_write_jpg(cambiar_name(dicIma, 2), ancho, alto, canales, pixeles_new_P, 100);
+    double tiempoFinalImag = omp_get_wtime();
 
     stbi_image_free(pixeles_new_S);
     stbi_image_free(pixeles_new_P);
 
     printf("\n<--><--><--><--| Metricas |--><--><--><-->\n");
 
-    printf("<--><--| Resolucion de la imagen:\n");
+    printf("\n<--><--| Resolucion de la imagen:\n");
     printf("<--| Ancho: %d\n", ancho);
     printf("<--| Alto: %d\n", alto);
     printf("<--| Canales: %d\n", canales);
     printf("<--| Tamaño: %d\n", ancho * alto * canales);
 
-    printf("<--><--| Tiempo de ejecucion:\n");
+    printf("\n<--><--| Tiempo de ejecucion:\n");
     printf("<--| Tiempo de ejecución (secuencial): %f [s]\n", tiempofinalS - tiempoInicialS);
     printf("<--| Tiempo de ejecución (paralelo): %f [s]\n", tiempofinalP - tiempoInicialP);
 
-    int procesadores = omp_get_num_procs();
-    printf("\n<--| Numero de procesadores: %d\n", procesadores);
+    printf("\n<--| Numero de procesadores: %d\n", omp_get_num_procs());
+    printf("<--| SpeedUp: %f\n", (tiempofinalS - tiempoInicialS) / (tiempofinalP - tiempoInicialP));
+    printf("<--| Eficiencia: %f\n", (tiempofinalS - tiempoInicialS) / (omp_get_num_procs() * (tiempofinalP - tiempoInicialP)));
+    printf("<--| Tiempos de Overhead: %f [s]\n", (tiempofinalP - tiempoInicialP) - (tiempofinalS - tiempoInicialS) / omp_get_num_procs());
+   
+    printf("\n<--><--| Otros Tiempos:\n");
+    printf("<--| Tiempo de carga de imagen: %f [s]\n", tiempoFinalCargI - tiempoInicialCargI);
+    printf("<--| Tiempo de generación de imagen: %f [s]\n", tiempoFinalImag - tiempoInicialImag);
+    printf("<--| Tiempo de generación de archivos CSV: %f [s]\n\n", tiempoFinalArch - tiempoInicialArch);
 
     return 0;
 }
