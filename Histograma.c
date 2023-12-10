@@ -32,7 +32,7 @@ int *FDA_paralela(int *histo_og) {
 
     D_Acumulada[0] = histo_og[0];
 
-    #pragma omp single
+    #pragma omp master
     for (int i = 1; i < L; i++) {
         D_Acumulada[i] = D_Acumulada[i - 1] + histo_og[i];
     }
