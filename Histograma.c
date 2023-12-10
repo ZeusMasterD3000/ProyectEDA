@@ -26,7 +26,7 @@ int *FDA(int *histo_og) {
     return D_Acumulada;
 }
 
-// Version paralela (tal vez no es necesaria)
+// Version paralela 
 int *FDA_paralela(int *histo_og) {
     int *D_Acumulada = malloc(L * sizeof(int));
 
